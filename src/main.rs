@@ -3,6 +3,7 @@ extern crate bitfield;
 
 
 use std::ffi::OsStr;
+use std::fs::File;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -26,7 +27,7 @@ enum CLICommands {
 struct CLINew {
     #[structopt(parse(from_os_str))]
     image: PathBuf,
-    size: String,
+    size: u32,
 }
 
 #[derive(Debug, StructOpt)]
@@ -50,6 +51,18 @@ fn main() {
                 .collect::<Vec<&OsStr>>();
             fuse::mount(SFS::default(), &s.mount_point, &options).unwrap();
         },
-        _ => panic!("image creation not ready"),
+        CLICommands::New(s) => {
+            create_fs(s)
+        }
     }
+}
+
+fn create_fs(fs: CLINew) {
+    // size of the fs in KB
+    let kb_size = fs.size * 1024 * 1024;
+    let inode_count = kb_size;
+    let block_count = kb_size/4;
+    let sfs = fs::SFS::new(inode_count, block_count);
+    let mut file = File::create(fs.image).expect("Failed to open file");
+    sfs.dump(&mut file).expect("failed to write file");
 }
