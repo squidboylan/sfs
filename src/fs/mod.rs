@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::Write;
 use std::io::Read;
 use std::io::Result;
-use tempfile::tempfile;
 
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -122,6 +121,7 @@ impl Filesystem for SFS {}
 fn test_dump_and_load() {
     use std::io::Seek;
     use std::io::SeekFrom;
+    use tempfile::tempfile;
 
     let kb_size = 1024 * 1024;
     let inode_count = kb_size;
