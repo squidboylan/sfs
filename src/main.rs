@@ -27,6 +27,7 @@ enum CLICommands {
 struct CLINew {
     #[structopt(parse(from_os_str))]
     image: PathBuf,
+    // Size in GiB
     size: u32,
 }
 
@@ -58,7 +59,7 @@ fn main() {
 }
 
 fn create_fs(fs: CLINew) {
-    // size of the fs in KB
+    // size of the fs in KiB
     let kb_size = fs.size * 1024 * 1024;
     let inode_count = kb_size;
     let block_count = kb_size/4;

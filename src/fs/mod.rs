@@ -4,7 +4,6 @@ use std::io::Write;
 use std::io::Read;
 use std::io::Result;
 
-
 #[derive(Default, Debug, Clone, PartialEq)]
 struct BitField<T>(T);
 bitfield_bitrange!{struct BitField([u32])}
@@ -67,6 +66,7 @@ impl SuperBlock {
 
 /// This will get aligned to 4 bytes and its size must be a multiple of 4 bytes, because accessing
 /// padding is UB we add padding to prevent UB when accessing the struct to write it to disk.
+/// (Maybe the compiler does this automatically?)
 #[repr(C)]
 #[derive(Default, Debug, Clone, PartialEq)]
 struct Inode {
@@ -79,6 +79,22 @@ struct Inode {
     pad: [u8; 3],
 }
 
+#[repr(C)]
+#[repr(align(4096))]
+#[derive(Debug, Clone, PartialEq)]
+struct DataBlock {
+    bytes: [u8; 4096],
+}
+
+impl std::default::Default for DataBlock {
+    fn default() -> Self {
+        Self {
+            bytes: [0;4096],
+        }
+    }
+}
+
+#[repr(C)]
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct SFS{
     sb: SuperBlock,
@@ -108,8 +124,10 @@ impl SFS {
 
     pub fn dump(&self, image: &mut File) -> Result<()> {
         self.sb.dump(image)?;
+        let data_blocks = vec![DataBlock::default(); self.sb.block_count as usize];
         unsafe {
             image.write(std::slice::from_raw_parts(self.inodes.as_ptr() as *const u8, self.inodes.len() * std::mem::size_of::<Inode>()))?;
+            image.write(std::slice::from_raw_parts(data_blocks.as_ptr() as *const u8, data_blocks.len() * std::mem::size_of::<DataBlock>()))?;
         }
         Ok(())
     }
@@ -123,7 +141,7 @@ fn test_dump_and_load() {
     use std::io::SeekFrom;
     use tempfile::tempfile;
 
-    let kb_size = 1024 * 1024;
+    let kb_size = 16 * 1024;
     let inode_count = kb_size;
     let block_count = kb_size/4;
     let sfs = SFS::new(inode_count, block_count);
@@ -134,3 +152,11 @@ fn test_dump_and_load() {
 
     assert_eq!(sfs, loaded_sfs);
 }
+
+/*
+#[test]
+fn test_super_block_size_and_alignment() {
+    assert_eq!(std::mem::size_of::<SuperBlock>(), 4096);
+    assert_eq!(std::mem::align_of::<SuperBlock>(), 4096);
+}
+*/
